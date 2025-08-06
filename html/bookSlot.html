@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TechCare - Device Repair</title>
+  <link rel="stylesheet" href="../css/bookSlot.css" />
+</head>
+<body>
+  <header>
+    <div class="logo">TechCare</div>
+    <nav>
+      <ul>
+        <li><a href="{{ url_for('home_customer') }}">Home</a></li>
+        <li><a href="{{ url_for('services') }}">Services</a></li>
+        <li><a href="{{ url_for('bookslot') }}">Book a Repair</a></li>
+        <li><a href="{{ url_for('about') }}">About Us</a></li>
+      </ul>
+    </nav>
+
+    <div class="sign-in">
+      <button class="sign-in-button" onclick="toggleSignInOptions()">Sign In</button>
+      <div class="sign-in-options" style="display: none;">
+        <a href="{{ url_for('login_customer_page') }}"><button>Sign In</button></a>
+        <a href="{{ url_for('shop_login_page') }}"><button>Sign In as Shop</button></a>
+      </div>   
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-content">
+      <h1>Your gadget’s road to recovery — book a repair and bring it back to life with expert hands.</h1>
+      <p>Provide a few details about your device and choose a time that works for you — our experts will take it from there, ensuring a smooth and speedy fix.</p>
+    </div>
+    <div class="hero-img">
+      <img src="../images/@zaku_mods.jpeg" alt="Device Graphic" />
+    </div>
+  </section>
+
+  <section id="form" class="form-wrapper">
+    <h2>Book Your Gadget Repair</h2>
+    <form id="repairForm" enctype="multipart/form-data">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Gadget Type</label>
+          <select name="gadget_type" id="gadgetTypeSelect" required>
+            <option value="">Select</option>
+            <option value="Phone">Phone</option>
+            <option value="Tablet">Tablet</option>
+            <option value="Laptop">Laptop</option>
+            <option value="Game Console">Game Console</option>
+            <option value="Smartwatch">Smartwatch</option>
+            <option value="Software Defect">Software Defect</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="customGadgetGroup" style="display: none;">
+          <label>Specify Gadget Type</label>
+          <input type="text" id="customGadgetType" name="custom_gadget_type" placeholder="Enter gadget type"/>
+        </div>
+
+        <div class="form-group"><label>Model</label>
+          <input type="text" name="model" required />
+        </div>
+
+        <div class="form-group"><label>Problem Description</label>
+          <textarea name="problem_description" required></textarea>
+        </div>
+
+        <div class="form-group"><label>Name</label>
+          <input type="text" name="name" required />
+        </div>
+
+        <div class="form-group"><label>Email</label>
+          <input type="email" name="email" required />
+        </div>
+
+        <div class="form-group"><label>Password</label>
+          <input type="password" name="password" required />
+        </div>
+
+        <div class="form-group"><label>Phone</label>
+          <input type="tel" name="phone" required />
+        </div>
+
+        <div class="form-group"><label>PIN Code</label>
+          <input type="text" name="pincode" required />
+        </div>
+
+        <div class="form-group full-width"><label>Residential Address</label>
+          <textarea name="address" required></textarea>
+        </div>
+      </div>
+
+      <div class="submit-area">
+        <button type="submit">Book Slot</button>
+      </div>
+    </form>
+
+    <div id="shop-selection" style="display: none; padding: 2rem;">
+      <h2>Select a Repair Shop</h2>
+      <form id="shopForm">
+        <div id="shopOptions"></div>
+        <br />
+        <button type="submit">Confirm Booking</button>
+      </form>
+    </div>
+
+    <div id="review-summary" style="display: none; padding: 2rem;"></div>
+  </section>
+
+  <script >
+    function toggleSignInOptions() {
+    const options = document.querySelector(".sign-in-options");
+    options.style.display = options.style.display === "none" ? "block" : "none";
+  }
+  
+  document.addEventListener("DOMContentLoaded", () => {
+    const form = document.getElementById("repairForm");
+    const shopForm = document.getElementById("shopForm");
+    const summaryDiv = document.getElementById("review-summary");
+    const shopDiv = document.getElementById("shop-selection");
+    const shopOptions = document.getElementById("shopOptions");
+    const gadgetSelect = document.getElementById("gadgetTypeSelect");
+    const customGadgetGroup = document.getElementById("customGadgetGroup");
+    const customGadgetInput = document.getElementById("customGadgetType");
+  
+    let formDataToSave = {};
+  
+    gadgetSelect.addEventListener("change", () => {
+      customGadgetGroup.style.display = gadgetSelect.value === "Other" ? "block" : "none";
+      customGadgetInput.required = gadgetSelect.value === "Other";
+    });
+  
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+      const gadgetType = fd.get("gadget_type") === "Other" ? fd.get("custom_gadget_type") : fd.get("gadget_type");
+  
+      formDataToSave = {
+        gadgetType,
+        model: fd.get("model"),
+        problemDescription: fd.get("problem_description"),
+        name: fd.get("name"),
+        email: fd.get("email"),
+        password: fd.get("password"),
+        phone: fd.get("phone"),
+        pincode: fd.get("pincode"),
+        address: fd.get("address"),
+      };
+  
+      const matchingShops = await getShopsByPincode(formDataToSave.pincode);
+  
+      if (matchingShops.length === 0) {
+        alert("No shops available for your pincode.");
+        return;
+      }
+  
+      shopOptions.innerHTML = matchingShops.map((shop, i) => `
+        <div class="shop-option">
+          <label>
+            <input type="radio" name="selected_shop" value="${shop.shop_id}" ${i === 0 ? "checked" : ""} />
+            ${shop.shop_name} - ${shop.city}
+          </label>
+          <span>${shop.shop_type}</span>
+        </div>
+      `).join("");
+  
+      form.style.display = "none";
+      shopDiv.style.display = "block";
+    });
+  
+    shopForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const selectedShop = document.querySelector('input[name="selected_shop"]:checked').value;
+      localStorage.setItem("repairFormData", JSON.stringify({ ...formDataToSave, selectedShop }));
+  
+      summaryDiv.innerHTML = `
+        <h2>Repair Slot Summary</h2>
+        <p><strong>Gadget Type:</strong> ${formDataToSave.gadgetType}</p>
+        <p><strong>Model:</strong> ${formDataToSave.model}</p>
+        <p><strong>Problem:</strong> ${formDataToSave.problemDescription}</p>
+        <p><strong>Name:</strong> ${formDataToSave.name}</p>
+        <p><strong>Email:</strong> ${formDataToSave.email}</p>
+        <p><strong>Phone:</strong> ${formDataToSave.phone}</p>
+        <p><strong>PIN Code:</strong> ${formDataToSave.pincode}</p>
+        <p><strong>Address:</strong> ${formDataToSave.address}</p>
+        <p><strong>Selected Shop:</strong> ${selectedShop}</p>
+      `;
+  
+      shopDiv.style.display = "none";
+      summaryDiv.style.display = "block";
+    });
+  
+    async function getShopsByPincode(pincode) {
+      try {
+        const res = await fetch("http://127.0.0.1:5000/get-shops", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pincode })
+        });
+        const data = await res.json();
+        return data.shops || [];
+      } catch (err) {
+        console.error("Failed to fetch shops:", err);
+        return [];
+      }
+    }
+  });
+  
+  </script>
+</body>
+</html>
